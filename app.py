@@ -70,6 +70,7 @@ def root():
 def health():
     return {"status": "ok"}
 
+@app.post("/")
 @app.post("/sentiment")
 def batch_sentiment(request: SentimentRequest):
     return {
