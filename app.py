@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 app = FastAPI(title="Batch Sentiment Analysis API")
 
@@ -11,54 +12,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+analyzer = SentimentIntensityAnalyzer()
+
 class SentimentRequest(BaseModel):
     sentences: list[str] = Field(min_length=1)
 
-POSITIVE = {
-    "love", "great", "excellent", "amazing", "awesome",
-    "happy", "wonderful", "fantastic", "good", "best",
-    "enjoy", "enjoyed", "like", "perfect", "beautiful",
-    "delighted", "brilliant", "pleased", "thankful"
-}
-
-NEGATIVE = {
-    "hate", "terrible", "awful", "sad", "bad", "worst",
-    "horrible", "disappointed", "angry", "poor", "annoying",
-    "boring", "ugly", "fail", "failed", "broken", "upset",
-    "unhappy", "dislike"
-}
-
-NEGATIONS = {"not", "no", "never", "isn't", "wasn't", "don't", "didn't", "can't"}
-
 def analyze_sentiment(sentence: str) -> str:
-    words = sentence.lower().replace("n't", " not").split()
-    positive_score = 0
-    negative_score = 0
+    score = analyzer.polarity_scores(sentence)["compound"]
 
-    for i, word in enumerate(words):
-        word = word.strip(".,!?;:\"'()[]{}")
-        if word in POSITIVE:
-            score = 1
-        elif word in NEGATIVE:
-            score = -1
-        else:
-            continue
-
-        previous = {
-            w.strip(".,!?;:\"'()[]{}")
-            for w in words[max(0, i - 3):i]
-        }
-        if previous & NEGATIONS:
-            score *= -1
-
-        if score > 0:
-            positive_score += 1
-        else:
-            negative_score += 1
-
-    if positive_score > negative_score:
+    if score >= 0.05:
         return "happy"
-    if negative_score > positive_score:
+    elif score <= -0.05:
         return "sad"
     return "neutral"
 
